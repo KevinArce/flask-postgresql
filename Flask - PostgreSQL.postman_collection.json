@@ -98,6 +98,41 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "stackedBarChartData",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:5000/api/stackedBarChartData",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"stackedBarChartData"
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }
