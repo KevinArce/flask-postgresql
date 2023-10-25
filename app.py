@@ -17,6 +17,31 @@ GROUP BY EXTRACT(WEEK FROM c.date)
 ORDER BY week;
 """
 
+PERCENTAGE_OF_SUCESSFUL_COMPANIES_OVER_TIME = """SELECT 
+  recent.month, 
+  COUNT(CASE WHEN recent.total_conversations > 1500 THEN 1 END) * 100.0 / COUNT(*) as success_percentage
+FROM 
+  (
+    SELECT 
+      comp.id, 
+      DATE_TRUNC('month', conv.date) as month, 
+      SUM(conv.total) as total_conversations
+    FROM 
+      public.company comp
+      JOIN public.company_identifiers ci ON comp.id = ci.company_id
+      JOIN public.conversations conv ON ci.account_identifier = conv.account_id
+    WHERE 
+      conv.successful = TRUE AND
+      comp.close_date BETWEEN '2023-01-01' AND '2023-08-31' -- Adjust this date range
+    GROUP BY 
+      comp.id, DATE_TRUNC('month', conv.date)
+  ) AS recent 
+GROUP BY 
+  recent.month
+ORDER BY 
+  recent.month;
+"""
+
 load_dotenv()  # Loads variables from .env file into environment
 
 app = Flask(__name__)
@@ -53,6 +78,37 @@ def get_cumulative():
             )
 
         return {"lineChartData": formatted_data}
+    finally:
+        # Close the connection after the request is processed
+        new_connection.close()
+
+@app.get("/api/success")
+def get_success():
+    # Create a new connection for this request
+    new_connection = psycopg2.connect(url)
+
+    try:
+        with new_connection:
+            with new_connection.cursor() as cursor:
+                cursor.execute(PERCENTAGE_OF_SUCESSFUL_COMPANIES_OVER_TIME)
+                result = cursor.fetchall()
+
+        # Format the data into the desired format
+        formatted_data = []
+        for row in result:
+            month, success_percentage = row
+            # Convert month to a string with only the month and year
+            formatted_month = month.strftime("%b, %Y")
+            # Round the success percentage to 2 decimal places
+            rounded_percentage = round(success_percentage, 2)
+            formatted_data.append(
+                {
+                    "Month": formatted_month,
+                    "Success Percentage": rounded_percentage,
+                }
+            )
+
+        return {"lineChartData2": formatted_data}
     finally:
         # Close the connection after the request is processed
         new_connection.close()
