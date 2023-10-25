@@ -42,6 +42,44 @@ ORDER BY
   recent.month;
 """
 
+COMPANIES_CLOSED_PER_MONTH = """WITH cohort_data AS (
+  SELECT
+    c.id AS company_id,
+    DATE_TRUNC('month', c.close_date) AS cohort_month,
+    ci.stripe_company_ids AS stripe_id
+  FROM
+    public.company c
+    JOIN public.company_identifiers ci ON c.id = ci.company_id
+),
+invoice_data AS (
+  SELECT
+    si.company_id AS stripe_id,
+    DATE_TRUNC('month', si.sent_date) AS invoice_month,
+    si.amount
+  FROM
+    public.stripe_invoice si
+),
+cohort_revenue AS (
+  SELECT
+    cd.cohort_month,
+    id.invoice_month,
+    SUM(id.amount) AS revenue
+  FROM
+    cohort_data cd
+    JOIN invoice_data id ON cd.stripe_id = id.stripe_id
+  GROUP BY
+    cd.cohort_month, id.invoice_month
+)
+SELECT
+  cr.cohort_month,
+  cr.invoice_month,
+  cr.revenue
+FROM
+  cohort_revenue cr
+ORDER BY
+  cr.cohort_month, cr.invoice_month;
+"""
+
 load_dotenv()  # Loads variables from .env file into environment
 
 app = Flask(__name__)
@@ -112,3 +150,35 @@ def get_success():
     finally:
         # Close the connection after the request is processed
         new_connection.close()
+
+@app.get("/api/stackedBarChartData")
+def get_stackedBarChartData():
+    # Create a new connection for this request
+    new_connection = psycopg2.connect(url)
+
+    try:
+        with new_connection:
+            with new_connection.cursor() as cursor:
+                cursor.execute(COMPANIES_CLOSED_PER_MONTH)
+                result = cursor.fetchall()
+
+        # Format the data into the desired format
+        formatted_data = []
+        for row in result:
+            cohort_month, invoice_month, revenue = row
+            # Convert month to a string with only the month and year
+            formatted_cohort_month = cohort_month.strftime("%b, %Y")
+            formatted_invoice_month = invoice_month.strftime("%b, %Y")
+            formatted_data.append(
+                {
+                    "Month": formatted_cohort_month,
+                    "Invoice Month": formatted_invoice_month,
+                    "Revenue": revenue,
+                }
+            )
+
+        return {"stackedBarChartData": formatted_data}
+    finally:
+        # Close the connection after the request is processed
+        new_connection.close()
+
