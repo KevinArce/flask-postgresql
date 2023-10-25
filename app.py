@@ -3,6 +3,7 @@ import psycopg2
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from flask import Flask, request
+from flask_cors import CORS
 
 CUMULATIVE_WEEKLY_COUNTS = """SELECT
     EXTRACT(WEEK FROM MIN(c.date)) AS week,
@@ -19,6 +20,7 @@ ORDER BY week;
 load_dotenv()  # Loads variables from .env file into environment
 
 app = Flask(__name__)
+CORS(app)
 url = os.environ.get("DATABASE_URL")  # Gets variables from environment
 connection = psycopg2.connect(url)
 

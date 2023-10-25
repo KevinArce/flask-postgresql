@@ -1,4 +1,5 @@
 flask
+flask-cors
 Gunicorn
 python-dotenv
 psycopg2
